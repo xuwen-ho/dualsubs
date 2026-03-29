@@ -1,0 +1,17 @@
+{
+  "name": "dualsubs-stremio-addon",
+  "version": "1.0.0",
+  "description": "Stremio addon that merges Spanish and English subtitles from OpenSubtitles",
+  "main": "api/addon.js",
+  "scripts": {
+    "start": "node standalone.js"
+  },
+  "dependencies": {
+    "stremio-addon-sdk": "^1.6.10",
+    "axios": "^1.7.0",
+    "srt-parser-2": "^1.2.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

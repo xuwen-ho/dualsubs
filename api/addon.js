@@ -60,8 +60,17 @@ const addonInterface = builder.getInterface();
 // Export the Express router for Vercel serverless
 const router = getRouter(addonInterface);
 
-// Vercel expects a default export that is a request handler
+// Vercel expects a default export that is a (req, res) handler.
+// The SDK router is Express middleware requiring a `next` callback.
 module.exports = (req, res) => {
-  // Strip /api/addon prefix if present (Vercel rewrites route here)
-  router(req, res);
+  router(req, res, () => {
+    // If no SDK route matched, return a helpful landing page
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "text/html");
+    res.end(
+      '<h1>Dual Subtitles (ES/EN) Stremio Addon</h1>' +
+      '<p>Install in Stremio by adding: <code>' +
+      req.headers.host + '/manifest.json</code></p>'
+    );
+  });
 };

@@ -1,62 +1,26 @@
 const { addonBuilder, getRouter } = require("stremio-addon-sdk");
 const manifest = require("../lib/manifest");
-const { fetchSrt } = require("../lib/opensubtitles");
-const { mergeSrts } = require("../lib/merge");
 
 const builder = new addonBuilder(manifest);
 
-builder.defineSubtitlesHandler(async ({ type, id }) => {
+builder.defineSubtitlesHandler(async ({ type, id, extra }) => {
   const parts = id.split(":");
   const imdbId = parts[0];
-  const season = parts[1] ? parseInt(parts[1]) : undefined;
-  const episode = parts[2] ? parseInt(parts[2]) : undefined;
 
   console.log(`[DualSubs] Subtitle request: type=${type} id=${id}`);
 
-  try {
-    const [spanishSrt, englishSrt] = await Promise.all([
-      fetchSrt(imdbId, "es", season, episode),
-      fetchSrt(imdbId, "en", season, episode),
-    ]);
+  // Build the content ID (imdbId or imdbId:season:episode)
+  const contentId = parts.length >= 3 ? `${parts[0]}:${parts[1]}:${parts[2]}` : parts[0];
 
-    console.log(
-      `[DualSubs] Fetched: ES=${spanishSrt ? spanishSrt.length + " chars" : "null"}, EN=${englishSrt ? englishSrt.length + " chars" : "null"}`
-    );
-
-    if (!spanishSrt && !englishSrt) {
-      return { subtitles: [] };
-    }
-
-    let vttContent;
-    if (spanishSrt && englishSrt) {
-      vttContent = mergeSrts(spanishSrt, englishSrt);
-    } else if (spanishSrt) {
-      vttContent = mergeSrts(spanishSrt, "");
-    } else {
-      vttContent = mergeSrts("", englishSrt);
-    }
-
-    console.log(`[DualSubs] Merged VTT: ${vttContent.length} chars`);
-
-    // Encode as base64 data URL — works directly, no second request needed
-    const base64Vtt = Buffer.from(vttContent, "utf-8").toString("base64");
-
-    return {
-      subtitles: [
-        {
-          id: "dualsubs-es-en",
-          url: `data:text/vtt;base64,${base64Vtt}`,
-          lang: "spa",
-        },
-      ],
-    };
-  } catch (err) {
-    console.error("[DualSubs] Error:", err.response?.status, err.message);
-    if (err.response?.data) {
-      console.error("[DualSubs] Response:", JSON.stringify(err.response.data));
-    }
-    return { subtitles: [] };
-  }
+  return {
+    subtitles: [
+      {
+        id: "dualsubs-es-en",
+        url: `https://${process.env.VERCEL_URL || "dualsubs.vercel.app"}/api/vtt?id=${encodeURIComponent(contentId)}`,
+        lang: "spa",
+      },
+    ],
+  };
 });
 
 const addonInterface = builder.getInterface();

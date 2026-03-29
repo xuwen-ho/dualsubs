@@ -1,9 +1,13 @@
 {
   "rewrites": [
+    { "source": "/api/vtt", "destination": "/api/vtt" },
     { "source": "/(.*)", "destination": "/api/addon" }
   ],
   "functions": {
     "api/addon.js": {
+      "maxDuration": 10
+    },
+    "api/vtt.js": {
       "maxDuration": 30
     }
   }

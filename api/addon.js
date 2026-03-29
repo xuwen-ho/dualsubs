@@ -12,65 +12,92 @@ builder.defineSubtitlesHandler(async ({ type, id }) => {
   const season = parts[1] ? parseInt(parts[1]) : undefined;
   const episode = parts[2] ? parseInt(parts[2]) : undefined;
 
-  console.log(`[DualSubs] Request: type=${type} imdb=${imdbId} S${season}E${episode}`);
+  console.log(`[DualSubs] Subtitle request: type=${type} id=${id}`);
 
-  try {
-    // Fetch both subtitle tracks in parallel
-    const [spanishSrt, englishSrt] = await Promise.all([
-      fetchSrt(imdbId, "es", season, episode),
-      fetchSrt(imdbId, "en", season, episode),
-    ]);
+  // Build VTT URL that points to our own /vtt/ endpoint
+  const host = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "https://dualsubs.vercel.app";
+  const vttUrl = `${host}/vtt/${encodeURIComponent(id)}.vtt`;
 
-    if (!spanishSrt && !englishSrt) {
-      console.log("[DualSubs] No subtitles found for either language");
-      return { subtitles: [] };
-    }
-
-    // If only one language is available, still provide it as a single-language VTT
-    let vttContent;
-    if (spanishSrt && englishSrt) {
-      vttContent = mergeSrts(spanishSrt, englishSrt);
-    } else if (spanishSrt) {
-      vttContent = mergeSrts(spanishSrt, "");
-    } else {
-      vttContent = mergeSrts("", englishSrt);
-    }
-
-    // Encode the VTT as a base64 data URL that Stremio can consume directly
-    const base64Vtt = Buffer.from(vttContent, "utf-8").toString("base64");
-    const dataUrl = `data:text/vtt;base64,${base64Vtt}`;
-
-    return {
-      subtitles: [
-        {
-          id: "dualsubs-es-en",
-          url: dataUrl,
-          lang: "Dual (ES/EN)",
-        },
-      ],
-    };
-  } catch (err) {
-    console.error("[DualSubs] Error:", err.message);
-    return { subtitles: [] };
-  }
+  return {
+    subtitles: [
+      {
+        id: "dualsubs-es-en",
+        url: vttUrl,
+        lang: "spa",
+      },
+    ],
+  };
 });
 
 const addonInterface = builder.getInterface();
+const sdkRouter = getRouter(addonInterface);
 
-// Export the Express router for Vercel serverless
-const router = getRouter(addonInterface);
+/**
+ * Fetch both SRTs and return merged VTT content.
+ */
+async function buildMergedVtt(id) {
+  const parts = id.split(":");
+  const imdbId = parts[0];
+  const season = parts[1] ? parseInt(parts[1]) : undefined;
+  const episode = parts[2] ? parseInt(parts[2]) : undefined;
 
-// Vercel expects a default export that is a (req, res) handler.
-// The SDK router is Express middleware requiring a `next` callback.
-module.exports = (req, res) => {
-  router(req, res, () => {
-    // If no SDK route matched, return a helpful landing page
+  const [spanishSrt, englishSrt] = await Promise.all([
+    fetchSrt(imdbId, "es", season, episode),
+    fetchSrt(imdbId, "en", season, episode),
+  ]);
+
+  if (!spanishSrt && !englishSrt) return null;
+
+  if (spanishSrt && englishSrt) return mergeSrts(spanishSrt, englishSrt);
+  if (spanishSrt) return mergeSrts(spanishSrt, "");
+  return mergeSrts("", englishSrt);
+}
+
+// Vercel serverless handler
+module.exports = async (req, res) => {
+  // CORS headers for all responses
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+
+  if (req.method === "OPTIONS") {
+    res.statusCode = 200;
+    res.end();
+    return;
+  }
+
+  // Serve merged VTT files at /vtt/:id.vtt
+  const vttMatch = req.url.match(/^\/vtt\/(.+)\.vtt$/);
+  if (vttMatch) {
+    const id = decodeURIComponent(vttMatch[1]);
+    console.log(`[DualSubs] VTT request for: ${id}`);
+    try {
+      const vtt = await buildMergedVtt(id);
+      if (vtt) {
+        res.setHeader("Content-Type", "text/vtt; charset=utf-8");
+        res.end(vtt);
+      } else {
+        res.statusCode = 404;
+        res.end("No subtitles found");
+      }
+    } catch (err) {
+      console.error("[DualSubs] VTT build error:", err.message);
+      res.statusCode = 500;
+      res.end("Error building subtitles");
+    }
+    return;
+  }
+
+  // SDK routes (manifest.json, subtitles handler)
+  sdkRouter(req, res, () => {
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/html");
     res.end(
       '<h1>Dual Subtitles (ES/EN) Stremio Addon</h1>' +
-      '<p>Install in Stremio by adding: <code>' +
-      req.headers.host + '/manifest.json</code></p>'
+        '<p>Install in Stremio by adding: <code>https://' +
+        (req.headers.host || "dualsubs.vercel.app") +
+        "/manifest.json</code></p>"
     );
   });
 };

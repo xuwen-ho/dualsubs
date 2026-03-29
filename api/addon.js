@@ -15,7 +15,7 @@ builder.defineSubtitlesHandler(async ({ type, id, extra }) => {
   // Generate 5 subtitle options for the user so they can select the best synced pair
   const subtitleOptions = Array.from({ length: 5 }).map((_, i) => ({
     id: `dualsubs-es-en-${i}`,
-    url: `https://${process.env.VERCEL_URL || "dualsubs.vercel.app"}/api/vtt?id=${encodeURIComponent(contentId)}&index=${i}`,
+    url: `https://dualsubs.vercel.app/api/vtt?id=${encodeURIComponent(contentId)}&index=${i}`,
     lang: "spa",
   }));
 
@@ -42,9 +42,9 @@ module.exports = async (req, res) => {
     res.setHeader("Content-Type", "text/html");
     res.end(
       '<h1>Dual Subtitles (ES/EN) Stremio Addon</h1>' +
-        '<p>Install in Stremio by adding: <code>https://' +
-        (req.headers.host || "dualsubs.vercel.app") +
-        "/manifest.json</code></p>"
+      '<p>Install in Stremio by adding: <code>https://' +
+      (req.headers.host || "dualsubs.vercel.app") +
+      "/manifest.json</code></p>"
     );
   });
 };

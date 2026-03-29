@@ -8,8 +8,7 @@
   },
   "dependencies": {
     "stremio-addon-sdk": "^1.6.10",
-    "axios": "^1.7.0",
-    "srt-parser-2": "^1.2.3"
+    "axios": "^1.7.0"
   },
   "engines": {
     "node": ">=18"

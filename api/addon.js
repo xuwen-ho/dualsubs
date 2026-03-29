@@ -12,14 +12,15 @@ builder.defineSubtitlesHandler(async ({ type, id, extra }) => {
   // Build the content ID (imdbId or imdbId:season:episode)
   const contentId = parts.length >= 3 ? `${parts[0]}:${parts[1]}:${parts[2]}` : parts[0];
 
+  // Generate 5 subtitle options for the user so they can select the best synced pair
+  const subtitleOptions = Array.from({ length: 5 }).map((_, i) => ({
+    id: `dualsubs-es-en-${i}`,
+    url: `https://${process.env.VERCEL_URL || "dualsubs.vercel.app"}/api/vtt?id=${encodeURIComponent(contentId)}&index=${i}`,
+    lang: "spa",
+  }));
+
   return {
-    subtitles: [
-      {
-        id: "dualsubs-es-en",
-        url: `https://${process.env.VERCEL_URL || "dualsubs.vercel.app"}/api/vtt?id=${encodeURIComponent(contentId)}`,
-        lang: "spa",
-      },
-    ],
+    subtitles: subtitleOptions,
   };
 });
 

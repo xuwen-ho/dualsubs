@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { id } = req.query;
+  const { id, index } = req.query;
 
   if (!id) {
     res.statusCode = 400;
@@ -24,12 +24,14 @@ module.exports = async (req, res) => {
   const season = parts[1] ? parseInt(parts[1]) : undefined;
   const episode = parts[2] ? parseInt(parts[2]) : undefined;
 
-  console.log(`[DualSubs] VTT request: id=${id}`);
+  const subIndex = parseInt(index) || 0;
+
+  console.log(`[DualSubs] VTT request: id=${id} index=${subIndex}`);
 
   try {
     const [spanishSrt, englishSrt] = await Promise.all([
-      fetchSrt(imdbId, "es", season, episode),
-      fetchSrt(imdbId, "en", season, episode),
+      fetchSrt(imdbId, "es", season, episode, subIndex),
+      fetchSrt(imdbId, "en", season, episode, subIndex),
     ]);
 
     console.log(

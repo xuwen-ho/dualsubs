@@ -15,16 +15,15 @@ builder.defineSubtitlesHandler(async ({ type, id }) => {
 
   console.log(`[DualSubs] Request: type=${type} id=${id}`);
 
-  const vttUrl = `http://localhost:${PORT}/vtt/${encodeURIComponent(id)}.vtt`;
+  // Generate 5 subtitle options for the user so they can select the best synced pair
+  const subtitleOptions = Array.from({ length: 5 }).map((_, i) => ({
+    id: `dualsubs-es-en-${i}`,
+    url: `http://localhost:${PORT}/vtt/${encodeURIComponent(id)}.vtt?index=${i}`,
+    lang: "spa",
+  }));
 
   return {
-    subtitles: [
-      {
-        id: "dualsubs-es-en",
-        url: vttUrl,
-        lang: "spa",
-      },
-    ],
+    subtitles: subtitleOptions,
   };
 });
 
@@ -36,15 +35,17 @@ const { getRouter } = require("stremio-addon-sdk");
 
 app.get("/vtt/:id.vtt", async (req, res) => {
   const id = decodeURIComponent(req.params.id);
+  const { index } = req.query;
   const parts = id.split(":");
   const imdbId = parts[0];
   const season = parts[1] ? parseInt(parts[1]) : undefined;
   const episode = parts[2] ? parseInt(parts[2]) : undefined;
+  const subIndex = parseInt(index) || 0;
 
   try {
     const [spanishSrt, englishSrt] = await Promise.all([
-      fetchSrt(imdbId, "es", season, episode),
-      fetchSrt(imdbId, "en", season, episode),
+      fetchSrt(imdbId, "es", season, episode, subIndex),
+      fetchSrt(imdbId, "en", season, episode, subIndex),
     ]);
 
     if (!spanishSrt && !englishSrt) {

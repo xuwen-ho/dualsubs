@@ -7,9 +7,9 @@
     "start": "node standalone.js"
   },
   "dependencies": {
-    "stremio-addon-sdk": "^1.6.10",
-    "axios": "^1.7.0",
-    "express": "^4.21.0"
+    "axios": "^1.14.0",
+    "express": "^4.21.0",
+    "stremio-addon-sdk": "^1.6.10"
   },
   "engines": {
     "node": ">=18"
